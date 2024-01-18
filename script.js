@@ -89,7 +89,7 @@ function reposdatafetch() {
             repos_data = data;
             setTimeout(() => {
                 setrepos();
-            }, 1000);
+            }, 500);
         })
 }
 
@@ -271,10 +271,28 @@ function createPaginationControls(totalRepos) {
     `;
 
     document.getElementById('pagination-controls').innerHTML = paginationHtml;
+
+    document.getElementById("prev-button").classList.toggle('disabled', page === 1);
+    document.getElementById("next-button").classList.toggle('disabled', page === totalPages);
 }
 
 // Change the current page and update repos display
 function changePage(newPage) {
     page = newPage;
-    applyfilters(); // Reapply filters to update repos display
+    applyfilters();
 }
+
+document.getElementById("prev-button").addEventListener("click", function () {
+    if (page > 1) {
+        page--;
+        applyfilters();
+    }
+});
+
+document.getElementById("next-button").addEventListener("click", function () {
+    const totalPages = Math.ceil(profile_data.public_repos / per_page);
+    if (page < totalPages) {
+        page++;
+        applyfilters();
+    }
+});
