@@ -4,9 +4,9 @@
 }
 
 #display-section {
-    display: block;
+    display: none;
 }
 
 #warning-section {
-    display: none;
+    display: block;
 }
