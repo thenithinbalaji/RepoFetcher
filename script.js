@@ -1,36 +1,71 @@
+maxVisiblePages = 3
+
+// variables to store fetched data
 username = ""
 repos_data = []
 profile_data = {}
 
+// query params for github api call
 per_page = 10;
 sort = "full_name";
 direction = "asc";
 page = 1;
 
 document.getElementById("username-form").addEventListener("submit", function (event) {
-    event.preventDefault();
+    event.preventDefault(); // prevent page from reloading on fetch button press
+
+    //clear controls and query params
+    resetfilters();
+
+    // set maxpage in navigation pages
+    setmaxpage();
 
     //set username
     username = document.getElementById("username-input").value;
 
-    // set loading in repos section and hide controls
+    // set loading in repos section and hide controls, pagination
     showloading();
 
-    // set profile_data and call setprofile function
+    // fetch from github, set profile_data and call setprofile function
     profiledatafetch();
 
-    // set repos_data and call setrepos function
+    // fetch from github, set repos_data and call setrepos function
     reposdatafetch();
 })
 
-// called each time a control is changed
+// set maxpage in navigation pages
+function setmaxpage() {
+    const viewportWidth = window.innerWidth;
+
+    if (viewportWidth < 576) {
+        screenSize = 'sm';
+        maxVisiblePages = 3;
+    } else if (viewportWidth < 992) {
+        maxVisiblePages = 4;
+    } else {
+        maxVisiblePages = 6;
+    }
+}
+
+// reset filters and search bar
+function resetfilters() {
+    per_page = 10;
+    sort = "full_name";
+    direction = "asc";
+    page = 1;
+    document.getElementById('repo-search-input').value = "";
+    document.getElementById('sort-by').value = "full_name";
+    document.getElementById('sort-order').value = "asc";
+    document.getElementById('per-page').value = 10;
+}
+
+// called each time a control is changed or page is changed
 function applyfilters() {
     sort = document.getElementById('sort-by').value;
     direction = document.getElementById('sort-order').value;
-
-
     per_page = document.getElementById('per-page').value;
 
+    // to ensure min repos in a page is 10 and max is 100
     if (per_page < 10) {
         per_page = 10;
         document.getElementById('per-page').value = 10;
@@ -41,9 +76,10 @@ function applyfilters() {
         document.getElementById('per-page').value = 100;
     }
 
+    // logging api call with query params
     console.log(`Fetching -> https://api.github.com/users/${username}/repos?per_page=${per_page}&sort=${sort}&direction=${direction}&page=${page}`)
 
-    // set loading in repos
+    // set loading in repos section, showloading() was not used coz controls need to be displayed
     const repoCardsContainer = document.getElementById('repos-section');
     repoCardsContainer.innerHTML = `
     <div class="container text-center mt-5">
@@ -52,12 +88,12 @@ function applyfilters() {
     </div>
     `;
 
-    // set repos_data and call setrepos function
+    // fetch from github, set repos_data and call setrepos function
     reposdatafetch();
 }
 
 
-// set loading in repos section and hide controls
+// set loading in repos section and hide controls, pagination
 function showloading() {
     document.getElementById("repos-controls").style.display = "none";
     document.getElementById("pagination-console").style.display = "none";
@@ -71,7 +107,7 @@ function showloading() {
     `;
 }
 
-// for loading data from API
+// for loading profile data from API
 function profiledatafetch() {
     fetch(`https://api.github.com/users/${username}`)
         .then(response => response.json())
@@ -81,7 +117,7 @@ function profiledatafetch() {
         })
 }
 
-// for loading data from API
+// for loading repos data from API
 function reposdatafetch() {
     fetch(`https://api.github.com/users/${username}/repos?per_page=${per_page}&sort=${sort}&direction=${direction}&page=${page}`)
         .then(response => response.json())
@@ -89,7 +125,7 @@ function reposdatafetch() {
             repos_data = data;
             setTimeout(() => {
                 setrepos();
-            }, 500);
+            }, 500); // to show loading action
         })
 }
 
@@ -148,6 +184,7 @@ function setprofile() {
             document.getElementById("profile-twitter").style.display = "none";
         }
 
+        // converting bad links to good links
         if (data.blog) {
             if (data.blog.startsWith("http://") || data.blog.startsWith("https://")) {
                 document.getElementById("profile-otherlink").href = data.blog;
@@ -246,34 +283,73 @@ function setrepos() {
 function createPaginationControls(totalRepos) {
     const totalPages = Math.ceil(totalRepos / per_page);
 
-    let paginationHtml = `
+    let paginationHtml = '';
+
+    // Previous button
+    paginationHtml += `
         <li class="page-item ${page === 1 ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="changePage(${page - 1})" aria-label="Previous">
-                <span aria-hidden="true">&laquo;</span>
+            <a class="page-link" href="#" onclick="changePage(${page - 1})" aria-label="Previous" data-bs-toggle="tooltip" data-bs-placement="left" title="Go to previous">
+                <span aria-hidden="true">←</span>
             </a>
         </li>
     `;
 
-    for (let i = 1; i <= totalPages; i++) {
-        paginationHtml += `
-            <li class="page-item ${page === i ? 'active' : ''}">
-                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
-            </li>
-        `;
+    // Generate page links with ellipsis
+    if (totalPages <= maxVisiblePages) {
+        // Display all pages if there are fewer pages than the maximum visible pages
+        for (let i = 1; i <= totalPages; i++) {
+            paginationHtml += createPageItem(i);
+        }
+    } else {
+        // Display ellipsis and a subset of pages based on the current page
+        const startPage = Math.max(1, page - Math.floor(maxVisiblePages / 2));
+        const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+        if (startPage > 1) {
+            paginationHtml += createPageItem(1);
+            if (startPage > 2) {
+                paginationHtml += createEllipsis();
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += createPageItem(i);
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHtml += createEllipsis();
+            }
+            paginationHtml += createPageItem(totalPages);
+        }
     }
 
+    // Next button
     paginationHtml += `
         <li class="page-item ${page === totalPages ? 'disabled' : ''}">
-            <a class="page-link" href="#" onclick="changePage(${page + 1})" aria-label="Next">
-                <span aria-hidden="true">&raquo;</span>
+            <a class="page-link" href="#" onclick="changePage(${page + 1})" aria-label="Next" data-bs-toggle="tooltip" data-bs-placement="right" title="Go to next">
+                <span aria-hidden="true">→</span>
             </a>
         </li>
     `;
 
     document.getElementById('pagination-controls').innerHTML = paginationHtml;
+}
 
-    document.getElementById("prev-button").classList.toggle('disabled', page === 1);
-    document.getElementById("next-button").classList.toggle('disabled', page === totalPages);
+function createPageItem(pageNumber) {
+    return `
+        <li class="page-item ${page === pageNumber ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="changePage(${pageNumber})">${pageNumber}</a>
+        </li>
+    `;
+}
+
+function createEllipsis() {
+    return `
+        <li class="page-item disabled">
+            <span class="page-link">...</span>
+        </li>
+    `;
 }
 
 // Change the current page and update repos display
@@ -281,18 +357,3 @@ function changePage(newPage) {
     page = newPage;
     applyfilters();
 }
-
-document.getElementById("prev-button").addEventListener("click", function () {
-    if (page > 1) {
-        page--;
-        applyfilters();
-    }
-});
-
-document.getElementById("next-button").addEventListener("click", function () {
-    const totalPages = Math.ceil(profile_data.public_repos / per_page);
-    if (page < totalPages) {
-        page++;
-        applyfilters();
-    }
-});
