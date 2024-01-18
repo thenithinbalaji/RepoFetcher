@@ -60,6 +60,7 @@ function applyfilters() {
 // set loading in repos section and hide controls
 function showloading() {
     document.getElementById("repos-controls").style.display = "none";
+    document.getElementById("pagination-console").style.display = "none";
 
     const repoCardsContainer = document.getElementById('repos-section');
     repoCardsContainer.innerHTML = `
@@ -121,6 +122,8 @@ function setprofile() {
         document.getElementById("fetch-button").classList.add("btn-primary");
 
         document.getElementById("profile-image").src = data.avatar_url;
+        document.getElementById("profile-link").href = data.html_url;
+        document.getElementById("profile-link").innerText = "github.com/" + username;
 
         if (data.name) document.getElementById("profile-name").innerText = data.name;
         else document.getElementById("profile-name").innerText = `${username}`;
@@ -135,6 +138,30 @@ function setprofile() {
 
         if (data.location) document.getElementById("profile-location").innerText = `📍 ${data.location}`;
         else document.getElementById("profile-location").innerText = "";
+
+        if (data.twitter_username) {
+            document.getElementById("profile-twitter").href = "https://twitter.com/" + data.twitter_username;
+            document.getElementById("profile-twitter").style.display = "inline-block";
+        }
+
+        else {
+            document.getElementById("profile-twitter").style.display = "none";
+        }
+
+        if (data.blog) {
+            if (data.blog.startsWith("http://") || data.blog.startsWith("https://")) {
+                document.getElementById("profile-otherlink").href = data.blog;
+            }
+            else {
+                document.getElementById("profile-otherlink").href = "http://" + data.blog;
+            }
+
+            document.getElementById("profile-otherlink").style.display = "inline-block";
+        }
+
+        else {
+            document.getElementById("profile-otherlink").style.display = "none";
+        }
     }
 }
 
@@ -151,6 +178,7 @@ function setrepos() {
         const filteredRepos = repos.filter(repo => repo.name.toLowerCase().includes(searchtext));
 
         document.getElementById("repos-controls").style.display = "block";
+        document.getElementById("pagination-console").style.display = "block";
 
         filteredRepos.forEach(repo => {
             const createdDate = new Date(repo.created_at);
@@ -191,7 +219,7 @@ function setrepos() {
                     
                     <div class="card-footer">
                         <small class="text-muted">
-                            <a href="${repo.html_url}" target="_blank">View on GitHub ↗</a>
+                            <a href="${repo.html_url}" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
                         </small>
                     </div>
                 </div>
